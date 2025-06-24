@@ -15,13 +15,20 @@ while True:
     if parsed_message is None:
         print("Received invalid eHuB message")
         continue
-    universe_id = parsed_message.universe
-    print(f'universe_id{universe_id}')
-    universe = universes.get(universe_id)
-    if universe is None:
-        print(f"Received message for unknown universe {universe_id}")
-        continue
-    universe.update_parsed_message(parsed_message)
+    for entity in parsed_message.entities:
+        for universe in universes.values():
+            if entity.id in universe.entity_ids:
+                universe.update_entity_state(entity.id, {
+                    "r": entity.r,
+                    "g": entity.g,
+                    "b": entity.b,
+                    "w": entity.w
+                })
+                break
+
+    for universe in universes.values():
+        if universe.entities_states:
+            universe.send_message()
 
 # if __name__ == "__main__":
 #     with open("ehub_sample1.bin", "rb") as f:

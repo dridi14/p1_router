@@ -1,27 +1,27 @@
 import json
 from pathlib import Path
 from models.decoder import ParsedMessage
+from models.decoder import EntityState
 
 class Universe:
     def __init__(self, name: int, ip: str, entity_ids: set[int]):
-        self.name = name  # ArtNet universe (int)
+        self.name = name  # ArtNet universe number
         self.ip = ip
-        self.parsed_message: ParsedMessage = None
+        self.entity_ids = entity_ids
+        self.entities_states: dict[int, EntityState] = {}
 
-    def update_parsed_message(self, parsed_message: ParsedMessage) -> None:
-        """
-        Met à jour le message analysé pour l'univers.
-        """
-        self.parsed_message = parsed_message
-        self.send_message()
+    def update_entity_state(self, entity_id: int, state: dict) -> None:
+        self.entities_states[entity_id] = EntityState(
+            id=entity_id,
+            r=state["r"],
+            g=state["g"],
+            b=state["b"],
+            w=state["w"]
+        )
 
     def send_message(self) -> None:
-        """
-        Envoie un message à l'univers, enregistre le dernier message envoyé.
-        """
         from artnet_sender.sender import create_and_send_dmx_packet
-
-        create_and_send_dmx_packet(self.parsed_message.entities, self.ip, self.name)
+        create_and_send_dmx_packet(list(self.entities_states.values()), self.ip, self.name)
 
 def load_universe_config(config_path: str) -> dict[int, Universe]:
     """
