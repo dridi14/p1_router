@@ -1,13 +1,34 @@
 import socket
 import struct
-from models.decoder import EntityState
 from typing import List
 
 ARTNET_PORT = 6454
 ARTNET_HEADER_ID = b'Art-Net\x00'
 OPCODE_OUTPUT = 0x5000
 
-def send_dmx_packet_raw(ip: str, universe: int, dmx_data: list[int]) -> None:
+def create_and_send_dmx_packet(entities: List, ip: str, universe: int) -> None:
+    """
+    Place les entités RGB à la suite dans la trame DMX.
+    3 canaux par entité, sans channel_start.
+    """
+    if not entities:
+        return
+
+    dmx_data = [0] * 512
+
+    for i, entity in enumerate(entities):
+        base = i * 3
+        if base + 2 >= 512:
+            break  # dépasse la limite DMX
+
+        dmx_data[base] = entity.r
+        dmx_data[base + 1] = entity.g
+        dmx_data[base + 2] = entity.b
+
+    send_dmx_packet_raw(ip, universe, dmx_data)
+
+
+def send_dmx_packet_raw(ip: str, universe: int, dmx_data: List[int]) -> None:
     if len(dmx_data) > 512:
         raise ValueError("DMX data exceeds 512 bytes")
 
@@ -24,28 +45,4 @@ def send_dmx_packet_raw(ip: str, universe: int, dmx_data: list[int]) -> None:
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(packet, (ip, ARTNET_PORT))
-    print(f"Sent DMX packet to {ip}:{ARTNET_PORT}, universe {universe}, data length {len(dmx_data)}")
     sock.close()
-
-def create_and_send_dmx_packet(entities: List[EntityState], ip, universe: int) -> None:
-    """
-    Agrège les données DMX de plusieurs entités et envoie un seul paquet ArtNet à l'IP donnée.
-
-    Args:
-        entities: Liste d'EntityState (doit contenir channel_start, channels, color, universe).
-        ip: IP du contrôleur ArtNet cible.
-    """
-    if not entities:
-        return
-
-    dmx_data = [0] * 512
-
-    for entity in entities:
-        start = entity.channel_start
-        for i, ch in enumerate(entity.channels):
-            value = entity.color.get(ch, 0)
-            index = start - 1 + i
-            if 0 <= index < 512:
-                dmx_data[index] = value
-
-    send_dmx_packet_raw(ip, universe, dmx_data) 

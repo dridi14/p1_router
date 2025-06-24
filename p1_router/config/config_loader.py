@@ -19,9 +19,9 @@ class Universe:
         """
         Envoie un message à l'univers, enregistre le dernier message envoyé.
         """
-        from p1_router.artnet_sender.sender import create_and_send_dmx_packet
+        from artnet_sender.sender import create_and_send_dmx_packet
 
-        create_and_send_dmx_packet(self.parsed_message, self.ip, self.name)
+        create_and_send_dmx_packet(self.parsed_message.entities, self.ip, self.name)
 
 def load_universe_config(config_path: str) -> dict[int, Universe]:
     """

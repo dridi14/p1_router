@@ -6,6 +6,7 @@ def decode_ehub_message(data: bytes) -> ParsedMessage:
         raise ValueError("Invalid message header")
 
     msg_type = data[4]  # 0x01 usually
+    print(msg_type)
     universe = data[5]  # e.g., 1
 
     # Entity data starts at byte 10
