@@ -1,6 +1,6 @@
 import socket
 import struct
-from types.decoder import ParsedMessage
+from models.decoder import ParsedMessage
 
 
 ARTNET_PORT = 6454

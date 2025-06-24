@@ -1,5 +1,5 @@
 
-from types.decoder import ParsedMessage, EntityState
+from models.decoder import ParsedMessage, EntityState
 
 def decode_ehub_message(data: bytes) -> ParsedMessage:
     if not data.startswith(b"eHuB"):

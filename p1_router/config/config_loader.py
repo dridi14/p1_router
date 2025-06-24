@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from types.decoder import ParsedMessage
+from models.decoder import ParsedMessage
 
 class Universe:
     def __init__(self, name: int, ip: str, entity_ids: set[int]):
