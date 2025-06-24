@@ -24,6 +24,7 @@ def send_dmx_packet_raw(ip: str, universe: int, dmx_data: list[int]) -> None:
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(packet, (ip, ARTNET_PORT))
+    print(f"Sent DMX packet to {ip}:{ARTNET_PORT}, universe {universe}, data length {len(dmx_data)}")
     sock.close()
 
 def create_and_send_dmx_packet(entities: List[EntityState], ip, universe: int) -> None:
