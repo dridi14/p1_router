@@ -1,0 +1,257 @@
+# P1 Routing Module - Product Specification (PO-Level)
+
+## ✨ Goal
+
+Develop a routing module that listens to eHuB messages (from Unity or Tan), 
+interprets them, maps them to physical controllers (BC216), and sends the appropriate DMX commands via ArtNet or similar protocols.
+
+---
+
+## 🌐 Overview
+
+The routing module is the central communication bridge between our software and the physical lighting controllers. 
+It must be robust, scalable, and easy to configure for both small and very large installations.
+
+This module replaces the current "Emitter Hub" system, which is not suited for scaling.
+
+---
+
+## ✅ Key Features (V2 Requirements)
+
+### E1: eHuB Protocol Listener
+
+* Receive `config` and `update` messages via UDP
+* User-configurable port and eHuB universe
+
+### E2: eHuB Monitor
+
+* Real-time visual or textual log of received messages
+* Ability to enable or disable this monitor
+
+### E3: Entity-to-Controller Mapping
+
+* Assign each entity to:
+
+  * Controller IP address
+  * ArtNet Universe
+  * Output LED range (DMX channel range)
+* Channel selection flexibility:
+
+  * RGB, RGBW, R-only, etc.
+* Mapping should be user-configurable via JSON or Excel
+
+### E4: Efficient Routing
+
+* Route eHuB state to DMX output efficiently
+* Minimize:
+
+  * Memory usage
+  * CPU usage
+  * Number of ArtNet packets
+* Operate on a separate thread from the UI
+
+### E5: DMX Output Monitor
+
+* Visualize the ArtNet output in real-time
+* Toggle on/off
+
+### E6: Save & Load Configuration
+
+* Support loading/saving full setup including:
+
+  * Entity mappings
+  * Patch maps
+* JSON/CSV/Excel supported formats
+
+### E7: Network Load Control
+
+* Throttle ArtNet packet sending frequency
+* Prevent network overload in large installations
+
+### E8: Patching System
+
+* Dynamically reroute DMX channels in case of hardware failure
+* Use CSV/Excel to define patch maps
+* Apply patches before sending output
+* Toggle patches on/off
+
+### E9 (Optional): ArtNet Input Monitor
+
+* Listen to incoming ArtNet messages
+* Help with debugging and double-instance validation
+
+### E10 (Optional): eHuB Faker
+
+* Simulate `update` messages to test routing without Unity
+* Allow predefined and sequential color patterns for entity testing
+
+---
+
+## 🔎 Message Format Specification
+
+### 📥 Incoming Data from Unity (eHuB)
+
+**Protocol**: UDP
+**Port**: Configurable (e.g. 5568)
+
+#### Example `update` message:
+
+```json
+{
+  "type": "update",
+  "universe": 1,
+  "entities": [
+    { "id": 1, "color": { "r": 255, "g": 255, "b": 0, "w": 0 } },
+    { "id": 2, "color": { "r": 0, "g": 255, "b": 255, "w": 128 } }
+  ]
+}
+```
+
+#### Example `config` message:
+
+```json
+{
+  "type": "config",
+  "universe": 1,
+  "entities": [
+    { "id": 1, "label": "Front Left", "group": "Stage" },
+    { "id": 2, "label": "Back Right", "group": "Stage" }
+  ]
+}
+```
+
+---
+
+### 🧰 Internal Representation (Post-Parsing)
+
+```python
+@dataclass
+class EntityState:
+    id: int
+    r: int
+    g: int
+    b: int
+    w: int
+
+@dataclass
+class eHuBUpdate:
+    universe: int
+    entities: List[EntityState]
+```
+
+---
+
+### 📦 Output Data Sent to Controller (ArtNet)
+
+**Protocol**: UDP
+**Port**: 6454
+**DMX Packet**: Max 512 bytes (up to 170 RGB entities)
+
+#### Per-entity DMX layout (RGBW):
+
+| Entity | Channel | R   | G   | B   | W   |
+| ------ | ------- | --- | --- | --- | --- |
+| 1      | 1       | 255 | 255 | 0   | 0   |
+| 2      | 5       | 0   | 255 | 255 | 128 |
+
+Final packet:
+
+```python
+dmx_data = [255, 255, 0, 0, 0, 255, 255, 128, ...]
+```
+
+---
+
+### 📁 Mapping Config Example (JSON)
+
+```json
+{
+  "entities": [
+    {
+      "id": 1,
+      "controller_ip": "192.168.1.50",
+      "universe": 0,
+      "channel_start": 1,
+      "channels": ["r", "g", "b"]
+    },
+    {
+      "id": 2,
+      "controller_ip": "192.168.1.50",
+      "universe": 0,
+      "channel_start": 4,
+      "channels": ["r", "g", "b", "w"]
+    }
+  ]
+}
+```
+
+---
+
+## ⚖️ Technical Considerations
+
+* Use a modular architecture (receiver, parser, mapper, patcher, sender)
+* Each component should be testable independently
+* Prioritize speed and low resource usage in routing pipeline
+
+---
+
+## ⚠️ Known Issues in Current System (Emitter Hub)
+
+* Does not scale with many entities
+* UI lags when many monitors are active
+* Too many repetitive configuration lines
+* Difficult to patch on-site without full reconfiguration
+
+---
+
+## ⚙️ Tools & External Options
+
+* Allow users to configure via Excel/CSV if JSON is too technical
+* Use open protocols (ArtNet) but design for easy switch to alternatives (e.g., USB)
+
+---
+
+## 🚀 Success Criteria
+
+* Can receive and parse eHuB messages
+* Allows mapping of thousands of entities quickly
+* Sends correct and efficient DMX data to controllers
+* User can patch circuits without restarting system
+* User can simulate, test, save, and reload configurations easily
+
+---
+
+## 📅 Milestones
+
+1. Receive & parse eHuB messages
+2. Implement entity-controller mapping
+3. Send DMX via ArtNet
+4. Build patching system
+5. Build save/load config system
+6. Implement monitors
+7. Optional: Add Faker & ArtNet input monitor
+
+---
+
+## ✍️ Notes for Dev Team
+
+* Use Python with threading or asyncio
+* Stick to clear folder/module structure
+* Provide clear CLI or minimal UI to enable/disable monitors and load configs
+
+---
+
+## 📦 Deliverables
+
+* Python source code
+* README with install/run instructions
+* Sample configuration files (JSON/CSV/Excel)
+* Optional GUI or CLI
+
+---
+
+## 📝 Authors & Stakeholders
+
+* Product Owner: \[Your Name Here]
+* Developer: \[Your Name Here]
+* Stakeholders: Unity Dev Team, On-site Technicians
