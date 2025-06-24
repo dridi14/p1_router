@@ -1,7 +1,7 @@
 import socket
 import struct
-from models.decoder import ParsedMessage
-
+from models.decoder import EntityState
+from typing import List
 
 ARTNET_PORT = 6454
 ARTNET_HEADER_ID = b'Art-Net\x00'
@@ -26,23 +26,25 @@ def send_dmx_packet_raw(ip: str, universe: int, dmx_data: list[int]) -> None:
     sock.sendto(packet, (ip, ARTNET_PORT))
     sock.close()
 
-def create_and_send_dmx_packet(parsed_message) -> None:
+def create_and_send_dmx_packet(entities: List[EntityState], ip, universe: int) -> None:
     """
-    Envoie une trame ArtNet pour un message parsé (ParsedMessage).
-    Envoie une trame par IP différente.
+    Agrège les données DMX de plusieurs entités et envoie un seul paquet ArtNet à l'IP donnée.
+
+    Args:
+        entities: Liste d'EntityState (doit contenir channel_start, channels, color, universe).
+        ip: IP du contrôleur ArtNet cible.
     """
-    ip_data_map = {}  # {ip: dmx_data}
+    if not entities:
+        return
 
-    for entity in parsed_message.entities:
-        ip = entity.controller_ip
-        if ip not in ip_data_map:
-            ip_data_map[ip] = [0] * 512
+    dmx_data = [0] * 512
 
-        for i, c in enumerate(entity.channels):
-            value = entity.color.get(c, 0)
-            dmx_index = entity.channel_start - 1 + i
-            if 0 <= dmx_index < 512:
-                ip_data_map[ip][dmx_index] = value
+    for entity in entities:
+        start = entity.channel_start
+        for i, ch in enumerate(entity.channels):
+            value = entity.color.get(ch, 0)
+            index = start - 1 + i
+            if 0 <= index < 512:
+                dmx_data[index] = value
 
-    for ip, dmx_data in ip_data_map.items():
-        send_dmx_packet_raw(ip, parsed_message.universe, dmx_data)
+    send_dmx_packet_raw(ip, universe, dmx_data) 
