@@ -22,15 +22,15 @@ class EntityCanvas(tk.Canvas):
         col_width = size + padding
         row_height = size + padding
 
-        all_entities = [
+        all_entities = sorted([
             entity_id
             for universe_id in sorted(self.universes.keys())
             for entity_id in (self.universes[universe_id].entity_ids)
-        ]
-
+        ])
+        
         x = 0
-        y_direction = -1  # draw upward (bottom to top)
-        start_row = 129  # bottom row (0-indexed, 128 rows => 0 to 127)
+        y_direction = -1  
+        start_row = 130 
         entity_idx = 0
 
         while entity_idx < len(all_entities):
