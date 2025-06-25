@@ -14,34 +14,46 @@ class EntityCanvas(tk.Canvas):
         self.bind("<B1-Motion>", self.on_drag)
         self.bind("<Button-1>", self.on_click)
 
-        self.draw_all_entities(width, height)
+        self.draw_all_entities()
 
-    def draw_all_entities(self, canvas_width, canvas_height):
-        all_entities = [
-            entity_id
-            for universe_id in (self.universes.keys())
-            for entity_id in (self.universes[universe_id].entity_ids)
-        ]
-        cols = 130  # 130 columns
-        rows = 128  # 128 rows
-
-        size = min(canvas_width // cols - 1, canvas_height // rows - 1)
-        padding = 1
+    def draw_all_entities(self):
+        size = 18
+        padding = 2
         col_width = size + padding
         row_height = size + padding
 
-        for index, entity_id in enumerate(sorted(all_entities)):
-            row = index // cols
-            col = index % cols
+        all_entities = [
+            entity_id
+            for universe_id in sorted(self.universes.keys())
+            for entity_id in sorted(self.universes[universe_id].entity_ids)
+        ]
 
-            x1 = col * col_width
-            y1 = row * row_height
-            x2 = x1 + size
-            y2 = y1 + size
+        x = 0
+        y_direction = -1  # draw upward (bottom to top)
+        start_row = 127  # bottom row (0-indexed, 128 rows => 0 to 127)
+        entity_idx = 0
 
-            rect = self.create_rectangle(x1, y1, x2, y2, fill="#000000", tags=(f"entity_{entity_id}"))
-            self.entity_rects[rect] = entity_id
+        while entity_idx < len(all_entities):
+            height = 130 if x % 2 == 0 else 129
 
+            for i in range(height):
+                if entity_idx >= len(all_entities):
+                    break
+
+                row = start_row - i if y_direction == -1 else i
+                col = x
+
+                x1 = col * col_width
+                y1 = row * row_height
+                x2 = x1 + size
+                y2 = y1 + size
+
+                entity_id = all_entities[entity_idx]
+                rect = self.create_rectangle(x1, y1, x2, y2, fill="#000000", tags=(f"entity_{entity_id}"))
+                self.entity_rects[rect] = entity_id
+                entity_idx += 1
+
+            x += 1
 
     def set_all_to_black(self):
         for rect in self.entity_rects.keys():
