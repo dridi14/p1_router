@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from models.decoder import ParsedMessage
 from models.decoder import EntityState
 
 class Universe:
@@ -16,7 +15,7 @@ class Universe:
             id=entity_id,
             r=state["r"],
             g=state["g"],
-            b=state["b"],
+            b=state["b"]
         )
 
     def send_message(self) -> None:

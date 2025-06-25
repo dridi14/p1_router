@@ -74,9 +74,7 @@ def send_dmx_packet_raw(ip: str, universe: int, dmx_data: List[int]) -> None:
 
     packet = header + opcode + prot_ver + sequence + physical + universe_bytes + length + data
 
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(packet, (ip, ARTNET_PORT))
-        sock.close()
-    except Exception as e:
-        print(f"Erreur lors de l'envoi du paquet ArtNet à {ip}: {e}")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(packet, (ip, ARTNET_PORT))
+    print(f"DMX packet sent to {ip}:{ARTNET_PORT} for universe {universe} with {len(dmx_data)} channels")
+    sock.close()
