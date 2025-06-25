@@ -17,24 +17,25 @@ class EntityCanvas(tk.Canvas):
         self.draw_all_entities()
 
     def draw_all_entities(self):
-        size = 18
-        padding = 2
+        size = 4    
+        padding = 1
         col_width = size + padding
         row_height = size + padding
 
         all_entities = [
             entity_id
             for universe_id in sorted(self.universes.keys())
-            for entity_id in sorted(self.universes[universe_id].entity_ids)
+            for entity_id in (self.universes[universe_id].entity_ids)
         ]
 
         x = 0
         y_direction = -1  # draw upward (bottom to top)
-        start_row = 127  # bottom row (0-indexed, 128 rows => 0 to 127)
+        start_row = 129  # bottom row (0-indexed, 128 rows => 0 to 127)
         entity_idx = 0
 
         while entity_idx < len(all_entities):
             height = 130 if x % 2 == 0 else 129
+            y_direction = -1 if x % 2 == 0 else 1
 
             for i in range(height):
                 if entity_idx >= len(all_entities):
