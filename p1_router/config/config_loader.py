@@ -9,6 +9,7 @@ class Universe:
         self.ip = ip
         self.entity_ids = entity_ids
         self.entities_states: dict[int, EntityState] = {}
+        self.channel_mapping: dict[int, int] = {}  # Mapping des IDs d'entité vers les canaux de départ
 
     def update_entity_state(self, entity_id: int, state: dict) -> None:
         self.entities_states[entity_id] = EntityState(
@@ -16,12 +17,11 @@ class Universe:
             r=state["r"],
             g=state["g"],
             b=state["b"],
-            w=state["w"]
         )
 
     def send_message(self) -> None:
         from artnet_sender.sender import create_and_send_dmx_packet
-        create_and_send_dmx_packet(list(self.entities_states.values()), self.ip, self.name)
+        create_and_send_dmx_packet(list(self.entities_states.values()), self.ip, self.name, self.channel_mapping)
 
 def load_universe_config(config_path: str) -> dict[int, Universe]:
     """
@@ -43,5 +43,16 @@ def load_universe_config(config_path: str) -> dict[int, Universe]:
             universes[universe_id].entity_ids.update(entity_ids)
         else:
             universes[universe_id] = Universe(universe_id, ip, entity_ids)
+            
+        # Créer un mapping de canaux simple pour chaque entité
+        # Par défaut, on place les entités de façon séquentielle (3 canaux par entité)
+        # Dans un univers réel, ce mapping pourrait être plus complexe
+        universe = universes[universe_id]
+        for entity_id in range(from_id, to_id + 1):
+            # Calcul d'un offset de canal basé sur l'ID relatif dans ce bloc
+            # Chaque entité prend 3 canaux (R,G,B)
+            relative_id = entity_id - from_id
+            channel_start = relative_id * 3
+            universe.channel_mapping[entity_id] = channel_start
 
     return universes

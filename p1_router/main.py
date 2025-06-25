@@ -22,7 +22,6 @@ while True:
                     "r": entity.r,
                     "g": entity.g,
                     "b": entity.b,
-                    "w": entity.w
                 })
                 break
 

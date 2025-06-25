@@ -6,8 +6,7 @@ def decode_ehub_message(data: bytes) -> ParsedMessage:
         raise ValueError("Invalid message header")
 
     msg_type = data[4]  # 0x01 usually
-    print(msg_type)
-    universe = data[5]  # e.g., 1
+    msg_id = data[5]
 
     # Entity data starts at byte 10
     entity_data = data[10:]
@@ -21,4 +20,4 @@ def decode_ehub_message(data: bytes) -> ParsedMessage:
         r, g, b = chunk[2], chunk[3], chunk[4]
         entities.append(EntityState(id=entity_id, r=r, g=g, b=b))
 
-    return ParsedMessage(universe=universe, entities=entities)
+    return ParsedMessage(universe=msg_id, entities=entities)
