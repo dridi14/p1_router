@@ -1,15 +1,23 @@
 import tkinter as tk
 from tkinter.colorchooser import askcolor
+from tkinter import filedialog
+from PIL import Image
 from config.config_loader import load_universe_config
 
 
 class EntityCanvas(tk.Canvas):
+    """Canvas that knows how to draw all entities and paint them from an image."""
+
     def __init__(self, master, universes, update_callback, width, height):
         super().__init__(master, bg="white", width=width, height=height)
         self.universes = universes
         self.update_callback = update_callback
         self.selected_color = {"r": 0, "g": 0, "b": 0, "w": 0}
         self.entity_rects = {}
+        # Maps entity_id -> (col, row) on the logical LED grid
+        self.entity_positions = {}
+        # Will be set after draw_all_entities()
+        self.num_columns = 0
 
         self.bind("<B1-Motion>", self.on_drag)
         self.bind("<Button-1>", self.on_click)
@@ -17,20 +25,21 @@ class EntityCanvas(tk.Canvas):
         self.draw_all_entities()
 
     def draw_all_entities(self):
-        size = 8    
+        size = 8
         padding = 1
         col_width = size + padding
         row_height = size + padding
 
-        all_entities = sorted([
-            entity_id
-            for universe_id in sorted(self.universes.keys())
-            for entity_id in (self.universes[universe_id].entity_ids)
-        ])
-        
+        all_entities = sorted(
+            [
+                entity_id
+                for universe_id in sorted(self.universes.keys())
+                for entity_id in self.universes[universe_id].entity_ids
+            ]
+        )
+
         x = 0
-        y_direction = -1  
-        start_row = 128 
+        start_row = 128  # bottom row for even columns
         entity_idx = 0
 
         while entity_idx < len(all_entities):
@@ -50,14 +59,40 @@ class EntityCanvas(tk.Canvas):
                 y2 = y1 + size
 
                 entity_id = all_entities[entity_idx]
-                rect = self.create_rectangle(x1, y1, x2, y2, fill="#000000", tags=(f"entity_{entity_id}"))
+                rect = self.create_rectangle(
+                    x1, y1, x2, y2, fill="#000000", tags=(f"entity_{entity_id}")
+                )
+
                 self.entity_rects[rect] = entity_id
+                self.entity_positions[entity_id] = (col, row)
+
                 entity_idx += 1
-            entity_idx +=1
+
+            # Skip one index between columns
+            entity_idx += 1
             x += 1
 
+        self.num_columns = x
+
+    def paint_image(self, image: Image.Image):
+        """Resize *image* to the logical grid and copy its colours to all entities."""
+        if not self.entity_rects or self.num_columns == 0:
+            return
+
+        target_height = 129 
+        target_width = self.num_columns
+        resized = image.resize((target_width, target_height)).convert("RGB")
+
+        for rect, entity_id in self.entity_rects.items():
+            col, row = self.entity_positions[entity_id]
+            r, g, b = resized.getpixel((col, row))
+            colour = {"r": r, "g": g, "b": b, "w": 0}
+
+            self.itemconfig(rect, fill=self.rgb_to_hex(colour))
+            self.update_callback(entity_id, colour)
+
     def set_all_to_black(self):
-        for rect in self.entity_rects.keys():
+        for rect in self.entity_rects:
             self.itemconfig(rect, fill="#000000")
             entity_id = self.entity_rects[rect]
             self.update_callback(entity_id, {"r": 0, "g": 0, "b": 0, "w": 0})
@@ -78,41 +113,65 @@ class EntityCanvas(tk.Canvas):
     def set_selected_color(self, rgb):
         self.selected_color = {"r": int(rgb[0]), "g": int(rgb[1]), "b": int(rgb[2]), "w": 0}
 
-    def rgb_to_hex(self, color):
+    @staticmethod
+    def rgb_to_hex(color):
         return f'#{color["r"]:02x}{color["g"]:02x}{color["b"]:02x}'
 
 
 class TestUI(tk.Tk):
+    """Main application window with control buttons."""
+
     def __init__(self):
         super().__init__()
         self.title("ArtNet Test UI")
-        self.attributes('-fullscreen', True)
+        self.attributes("-fullscreen", True)
 
         screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight() - 100  # Leave space for buttons
+        screen_height = self.winfo_screenheight() - 100  # reserve space for buttons
 
         self.entity_colors = {}
         self.universes = load_universe_config("config/config.json")
 
-        self.color_button = tk.Button(self, text="Select Color", command=self.choose_color)
-        self.color_button.pack()
+        controls = tk.Frame(self)
+        controls.pack()
 
-        self.send_button = tk.Button(self, text="Send", command=self.send_messages)
-        self.send_button.pack()
+        tk.Button(controls, text="Select Color", command=self.choose_color).pack(
+            side=tk.LEFT, padx=5, pady=5
+        )
+        tk.Button(controls, text="Upload Image", command=self.load_image).pack(
+            side=tk.LEFT, padx=5, pady=5
+        )
+        tk.Button(controls, text="Send", command=self.send_messages).pack(
+            side=tk.LEFT, padx=5, pady=5
+        )
+        tk.Button(controls, text="Set All to Black", command=self.set_all_black).pack(
+            side=tk.LEFT, padx=5, pady=5
+        )
 
-        self.blackout_button = tk.Button(self, text="Set All to Black", command=self.set_all_black)
-        self.blackout_button.pack()
-
-        self.canvas = EntityCanvas(self, self.universes, self.update_entity_color, screen_width, screen_height)
+        self.canvas = EntityCanvas(
+            self, self.universes, self.update_entity_color, screen_width, screen_height
+        )
         self.canvas.pack()
 
-        # Optional: Esc key to close fullscreen
-        self.bind("<Escape>", lambda e: self.destroy())
+        # Allow Esc to quit fullscreen quickly
+        self.bind("<Escape>", lambda _e: self.destroy())
 
     def choose_color(self):
         rgb, _ = askcolor()
         if rgb:
             self.canvas.set_selected_color(rgb)
+
+    def load_image(self):
+        file_path = filedialog.askopenfilename(
+            title="Select an image",
+            filetypes=[
+                ("Image files", "*.png *.jpg *.jpeg *.bmp *.gif"),
+                ("All files", "*.*"),
+            ],
+        )
+        if file_path:
+            image = Image.open(file_path)
+            self.canvas.paint_image(image)
 
     def update_entity_color(self, entity_id, color):
         self.entity_colors[entity_id] = color
