@@ -39,7 +39,7 @@ def create_and_send_dmx_packet(entities: List[EntityState], ip: str, universe: i
         dmx_data[base + 1] = entity.g
         dmx_data[base + 2] = entity.b
     
-    print(f'Envoi vers univers {universe}, IP {ip}, {len([x for x in dmx_data if x > 0])} canaux actifs')
+    # print(f'Envoi vers univers {universe}, IP {ip}, {len([x for x in dmx_data if x > 0])} canaux actifs')
     send_dmx_packet_raw(ip, universe, dmx_data)
 
 
@@ -76,5 +76,5 @@ def send_dmx_packet_raw(ip: str, universe: int, dmx_data: List[int]) -> None:
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(packet, (ip, ARTNET_PORT))
-    print(f"DMX packet sent to {ip}:{ARTNET_PORT} for universe {universe} with {len(dmx_data)} channels")
+    # print(f"DMX packet sent to {ip}:{ARTNET_PORT} for universe {universe} with {len(dmx_data)} channels")
     sock.close()
