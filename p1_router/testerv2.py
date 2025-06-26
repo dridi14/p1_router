@@ -36,7 +36,7 @@ class EntityCanvas(tk.Canvas):
         super().__init__(master, bg="white", width=width, height=height)
         self.universes = universes
         self.update_callback = update_callback
-        self.selected_color: RGBDict = {"r": 0, "g": 0, "b": 0, "w": 0}
+        self.selected_color: RGBDict = {"r": 0, "g": 0, "b": 0}
         self.entity_rects: Dict[int, int] = {}
         self.entity_positions: Dict[int, Tuple[int, int]] = {}
         self.num_columns: int = 0
@@ -55,18 +55,18 @@ class EntityCanvas(tk.Canvas):
         for rect, entity_id in self.entity_rects.items():
             col, row = self.entity_positions[entity_id]
             r, g, b = resized.getpixel((col, row))
-            colour = {"r": r, "g": g, "b": b, "w": 0}
+            colour = {"r": r, "g": g, "b": b}
             self.itemconfig(rect, fill=self._rgb_to_hex(colour))
             self.update_callback(entity_id, colour)
 
     def set_selected_color(self, rgb: Tuple[float, float, float]) -> None:
-        self.selected_color = {"r": int(rgb[0]), "g": int(rgb[1]), "b": int(rgb[2]), "w": 0}
+        self.selected_color = {"r": int(rgb[0]), "g": int(rgb[1]), "b": int(rgb[2])}
 
     def set_all_to_black(self) -> None:
         for rect in self.entity_rects:
             self.itemconfig(rect, fill="#000000")
             entity_id = self.entity_rects[rect]
-            self.update_callback(entity_id, {"r": 0, "g": 0, "b": 0, "w": 0})
+            self.update_callback(entity_id, {"r": 0, "g": 0, "b": 0})
 
     # ------------------------------------------------------------------
     #  Internal utilities
@@ -220,7 +220,7 @@ class TestUI(tk.Tk):
     def _set_all_black(self) -> None:
         self.canvas.set_all_to_black()
         self.entity_colors = {
-            eid: {"r": 0, "g": 0, "b": 0, "w": 0}
+            eid: {"r": 0, "g": 0, "b": 0}
             for universe in self.universes.values()
             for eid in universe.entity_ids
         }

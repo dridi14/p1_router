@@ -12,7 +12,7 @@ class EntityCanvas(tk.Canvas):
         super().__init__(master, bg="white", width=width, height=height)
         self.universes = universes
         self.update_callback = update_callback
-        self.selected_color = {"r": 0, "g": 0, "b": 0, "w": 0}
+        self.selected_color = {"r": 0, "g": 0, "b": 0}
         self.entity_rects = {}
         # Maps entity_id -> (col, row) on the logical LED grid
         self.entity_positions = {}
@@ -86,7 +86,7 @@ class EntityCanvas(tk.Canvas):
         for rect, entity_id in self.entity_rects.items():
             col, row = self.entity_positions[entity_id]
             r, g, b = resized.getpixel((col, row))
-            colour = {"r": r, "g": g, "b": b, "w": 0}
+            colour = {"r": r, "g": g, "b": b}
 
             self.itemconfig(rect, fill=self.rgb_to_hex(colour))
             self.update_callback(entity_id, colour)
@@ -95,7 +95,7 @@ class EntityCanvas(tk.Canvas):
         for rect in self.entity_rects:
             self.itemconfig(rect, fill="#000000")
             entity_id = self.entity_rects[rect]
-            self.update_callback(entity_id, {"r": 0, "g": 0, "b": 0, "w": 0})
+            self.update_callback(entity_id, {"r": 0, "g": 0, "b": 0})
 
     def on_click(self, event):
         self.apply_color(event.x, event.y)
@@ -111,7 +111,7 @@ class EntityCanvas(tk.Canvas):
             self.update_callback(entity_id, self.selected_color.copy())
 
     def set_selected_color(self, rgb):
-        self.selected_color = {"r": int(rgb[0]), "g": int(rgb[1]), "b": int(rgb[2]), "w": 0}
+        self.selected_color = {"r": int(rgb[0]), "g": int(rgb[1]), "b": int(rgb[2])}
 
     @staticmethod
     def rgb_to_hex(color):
@@ -190,7 +190,7 @@ class TestUI(tk.Tk):
     def set_all_black(self):
         self.canvas.set_all_to_black()
         self.entity_colors = {
-            entity_id: {"r": 0, "g": 0, "b": 0, "w": 0}
+            entity_id: {"r": 0, "g": 0, "b": 0}
             for universe in self.universes.values()
             for entity_id in universe.entity_ids
         }
