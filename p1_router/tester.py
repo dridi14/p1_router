@@ -17,7 +17,7 @@ class EntityCanvas(tk.Canvas):
         self.draw_all_entities()
 
     def draw_all_entities(self):
-        size = 4    
+        size = 4
         padding = 1
         col_width = size + padding
         row_height = size + padding
@@ -27,10 +27,9 @@ class EntityCanvas(tk.Canvas):
             for universe_id in sorted(self.universes.keys())
             for entity_id in (self.universes[universe_id].entity_ids)
         ])
-        
+
         x = 0
-        y_direction = -1  
-        start_row = 130 
+        start_row = 130
         entity_idx = 0
 
         while entity_idx < len(all_entities):
@@ -89,7 +88,7 @@ class TestUI(tk.Tk):
         self.attributes('-fullscreen', True)
 
         screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight() - 100  # Leave space for buttons
+        screen_height = self.winfo_screenheight() - 100
 
         self.entity_colors = {}
         self.universes = load_universe_config("config/config.json")
@@ -103,11 +102,89 @@ class TestUI(tk.Tk):
         self.blackout_button = tk.Button(self, text="Set All to Black", command=self.set_all_black)
         self.blackout_button.pack()
 
+        self.start_shape_button = tk.Button(self, text="Start Shape", command=self.start_geometry_animation)
+        self.start_shape_button.pack()
+
+        self.stop_shape_button = tk.Button(self, text="Stop Shape", command=self.stop_geometry_animation)
+        self.stop_shape_button.pack()
+
         self.canvas = EntityCanvas(self, self.universes, self.update_entity_color, screen_width, screen_height)
         self.canvas.pack()
 
-        # Optional: Esc key to close fullscreen
+        # Variables pour l'animation
+        self.geometry_animating = False
+        self.shape_pos = [10, 10]
+        self.shape_dir = [1, 1]
+        self.shape_size = 10
+        self.shape_color = {"r": 255, "g": 255, "b": 0, "w": 0}
+
         self.bind("<Escape>", lambda e: self.destroy())
+
+    def start_geometry_animation(self):
+        self.geometry_animating = True
+        self.run_geometry_animation()
+
+    def stop_geometry_animation(self):
+        self.geometry_animating = False
+        
+    def run_geometry_animation(self):
+        if not self.geometry_animating:
+            return
+
+        self.set_all_black()
+
+        max_pos = 128 - self.shape_size
+        for i in range(2):
+            self.shape_pos[i] += self.shape_dir[i]
+            if self.shape_pos[i] <= 0 or self.shape_pos[i] >= max_pos:
+                self.shape_dir[i] *= -1
+
+        entity_ids = self.get_entities_in_circle(self.shape_pos[0], self.shape_pos[1], self.shape_size)
+        for eid in entity_ids:
+            self.entity_colors[eid] = self.shape_color
+            self.canvas.itemconfig(self.canvas.find_withtag(f"entity_{eid}"), fill=self.canvas.rgb_to_hex(self.shape_color))
+
+        self.send_messages()
+        self.after(50, self.run_geometry_animation)
+
+    def get_entities_in_circle(self, cx, cy, radius):
+        result = []
+        id_to_coord = self.build_entity_id_lookup()
+        for eid, (x, y) in id_to_coord.items():
+            if (x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2:
+                result.append(eid)
+        return result
+
+    def build_entity_id_lookup(self):
+        size = 4
+        padding = 1
+
+        lookup = {}
+        all_entities = sorted([
+            entity_id
+            for universe in self.universes.values()
+            for entity_id in universe.entity_ids
+        ])
+
+        x = 0
+        start_row = 130
+        entity_idx = 0
+
+        while entity_idx < len(all_entities):
+            height = 130 if x % 2 == 0 else 129
+            y_direction = -1 if x % 2 == 0 else 1
+
+            for i in range(height):
+                if entity_idx >= len(all_entities):
+                    break
+                row = start_row - i if y_direction == -1 else i
+                col = x
+                entity_id = all_entities[entity_idx]
+                lookup[entity_id] = (col, row)
+                entity_idx += 1
+            x += 1
+
+        return lookup
 
     def choose_color(self):
         rgb, _ = askcolor()
@@ -123,7 +200,6 @@ class TestUI(tk.Tk):
             for entity_id in universe.entity_ids:
                 if entity_id in self.entity_colors:
                     universe.update_entity_state(entity_id, self.entity_colors[entity_id])
-
         for universe in self.universes.values():
             if universe.entities_states:
                 universe.send_message()
