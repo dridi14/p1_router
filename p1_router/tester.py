@@ -17,7 +17,7 @@ class EntityCanvas(tk.Canvas):
         self.draw_all_entities()
 
     def draw_all_entities(self):
-        size = 4    
+        size = 8    
         padding = 1
         col_width = size + padding
         row_height = size + padding
@@ -30,11 +30,11 @@ class EntityCanvas(tk.Canvas):
         
         x = 0
         y_direction = -1  
-        start_row = 130 
+        start_row = 128 
         entity_idx = 0
 
         while entity_idx < len(all_entities):
-            height = 130 if x % 2 == 0 else 129
+            height = 129 if x % 2 == 0 else 128
             y_direction = -1 if x % 2 == 0 else 1
 
             for i in range(height):
@@ -53,7 +53,7 @@ class EntityCanvas(tk.Canvas):
                 rect = self.create_rectangle(x1, y1, x2, y2, fill="#000000", tags=(f"entity_{entity_id}"))
                 self.entity_rects[rect] = entity_id
                 entity_idx += 1
-
+            entity_idx +=1
             x += 1
 
     def set_all_to_black(self):
