@@ -8,8 +8,6 @@ _HEADER       = b"eHuB"
 _UPDATE       = 2
 _CONFIG       = 1
 _BYTES_PER_LED = 6        # 2-byte id + R G B W
-
-# ── Domain models (adapt as needed) ────────────────────────────────────────
 @dataclass
 class EntityState:
     id: int
@@ -69,7 +67,6 @@ def _gunzip(blob: bytes) -> bytes:
     with gzip.GzipFile(fileobj=BytesIO(blob)) as gz:
         return gz.read()
 
-# ---- Config ---------------------------------------------------------------
 def _parse_config_payload(universe: int, payload: bytes) -> EHubConfigMsg:
     ranges: List[ConfigRange] = []
 
@@ -85,14 +82,17 @@ def _parse_config_payload(universe: int, payload: bytes) -> EHubConfigMsg:
 
     return EHubConfigMsg(universe=universe, ranges=ranges)
 
-# ---- Update ---------------------------------------------------------------
 def _parse_update_payload(
     universe: int, payload: bytes, entity_count_field: int
 ) -> EHubUpdateMsg:
+    """ Parse the payload of an eHuB update message.
+    :param universe: The universe ID from the header.
+    :param payload: The uncompressed payload bytes.
+    :param entity_count_field: The entity count from the header.
+    :return: An EHubUpdateMsg object containing the universe and a list of EntityState objects."""
     if len(payload) % _BYTES_PER_LED != 0:
         raise ValueError("Update payload size is not a multiple of 6 bytes")
 
-    # Optional cross-check with header’s entity-count field
     entity_count_payload = len(payload) // _BYTES_PER_LED
     if entity_count_field != 0 and entity_count_field != entity_count_payload:
         raise ValueError(
