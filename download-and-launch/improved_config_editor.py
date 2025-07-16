@@ -19,8 +19,30 @@ import platform
 from typing import Dict, List, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Constants
+# Constants - will be updated at runtime with absolute path
 CONFIG_PATH = "config/config.json"
+
+# Get absolute path to config file
+def get_config_path():
+    """Get absolute path to config file, handling different launch directories"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)  # Go up one level if in download-and-launch
+    
+    # Try multiple possible paths
+    possible_paths = [
+        os.path.join(script_dir, "config", "config.json"),            # /download-and-launch/config/config.json
+        os.path.join(project_root, "config", "config.json"),          # /config/config.json
+        os.path.join(project_root, "p1_router", "config", "config.json")  # /p1_router/config/config.json
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    
+    # If not found, create directory and return default path
+    default_path = os.path.join(script_dir, "config", "config.json")
+    os.makedirs(os.path.dirname(default_path), exist_ok=True)
+    return default_path
 COLORS = {
     "error": "#ffcccc",
     "warning": "#ffffcc",
@@ -1271,6 +1293,11 @@ class ImprovedConfigEditor(tk.Tk):
         self.multi_select_mode = False
         self.selected_indices = set()  # Track multiple selections
         
+        # Update CONFIG_PATH with absolute path
+        global CONFIG_PATH
+        CONFIG_PATH = get_config_path()
+        print(f"Using config path: {CONFIG_PATH}")
+        
         self.load_config()
         self.setup_ui()
         
@@ -2437,7 +2464,30 @@ class ImprovedConfigEditor(tk.Tk):
         """Run the main router application"""
         self.save_config()
         try:
-            subprocess.Popen(["python", "-m", "p1_router.main"])
+            # Get script directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)  # Go up one level if in download-and-launch
+            
+            # Try multiple possible paths for main.py
+            possible_paths = [
+                os.path.join(project_root, "main.py"),                   # /main.py
+                os.path.join(project_root, "p1_router", "main.py"),      # /p1_router/main.py
+                os.path.join(project_root, "..", "p1_router", "main.py") # /../p1_router/main.py
+            ]
+            
+            main_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    main_path = path
+                    break
+            
+            if main_path:
+                print(f"Running main router from: {main_path}")
+                subprocess.Popen(["python", main_path])
+            else:
+                # Last resort - try running from current directory
+                messagebox.showinfo("Path Info", f"Trying to run main.py from current directory: {os.getcwd()}")
+                subprocess.Popen(["python", "main.py"])
         except Exception as e:
             messagebox.showerror("Error", f"Failed to start main router: {e}")
     
@@ -2445,7 +2495,30 @@ class ImprovedConfigEditor(tk.Tk):
         """Run the tester application"""
         self.save_config()
         try:
-            subprocess.Popen(["python", "-m", "p1_router.tester"])
+            # Get script directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(script_dir)  # Go up one level if in download-and-launch
+            
+            # Try multiple possible paths for tester.py
+            possible_paths = [
+                os.path.join(project_root, "tester.py"),                   # /tester.py
+                os.path.join(project_root, "p1_router", "tester.py"),      # /p1_router/tester.py
+                os.path.join(project_root, "..", "p1_router", "tester.py") # /../p1_router/tester.py
+            ]
+            
+            tester_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    tester_path = path
+                    break
+            
+            if tester_path:
+                print(f"Running tester from: {tester_path}")
+                subprocess.Popen(["python", tester_path])
+            else:
+                # Last resort - try running from current directory
+                messagebox.showinfo("Path Info", f"Trying to run tester.py from current directory: {os.getcwd()}")
+                subprocess.Popen(["python", "tester.py"])
         except Exception as e:
             messagebox.showerror("Error", f"Failed to start tester: {e}")
     
