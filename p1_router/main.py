@@ -28,50 +28,38 @@ def event_listener(entity_table: Dict[int, Dict[str, Any]]):
 
         if isinstance(msg, EHubUpdateMsg):
             for ent in msg.entities:
-                if ent.id not in entity_table:
-                    continue
-
-                entity_table[ent.id]["r"] = ent.red
-                entity_table[ent.id]["g"] = ent.green
-                entity_table[ent.id]["b"] = ent.blue
+                if ent.id in entity_table:
+                    entity_table[ent.id].update({"r": ent.red, "g": ent.green, "b": ent.blue})
         elif isinstance(msg, EHubConfigMsg):
             for r in msg.ranges:
-                base = (r.red, r.green, r.blue, msg.universe)
-                update = {
-                    r.start_id + offset: {
-                        "r": base[0],
-                        "g": base[1],
-                        "b": base[2],
-                        "universe": base[3]
-                    }
-                    for offset in range(r.length)
-                }
-                entity_table.update(update)
-
+                for offset in range(r.length):
+                    eid = r.start_id + offset
+                    entity_table[eid] = {"r": r.red, "g": r.green, "b": r.blue, "universe": msg.universe}
 
 
 def dmx_sender(entity_table: Dict[int, Dict[str, Any]],
                universe_table: Dict[int, str],
                channel_mapping_table: Dict[int, int]):
-    while True:
-        universe_entities: Dict[int, List[EntityState]] = defaultdict(list)
+    last_state: Dict[int, List[EntityState]] = defaultdict(list)
 
-        # Build groups
+    while True:
+        current_state: Dict[int, List[EntityState]] = defaultdict(list)
         for entity_id, state in entity_table.items():
-            universe_entities[state["universe"]].append(
+            current_state[state["universe"]].append(
                 EntityState(entity_id, state["r"], state["g"], state["b"])
             )
 
-        # Send packets
-        for universe_id, entities in universe_entities.items():
-            create_and_send_dmx_packet(
-                entities,
-                universe_table[universe_id],
-                universe_id,
-                channel_mapping_table
-            )
-
-        time.sleep(0.001)
+        for universe_id, entities in current_state.items():
+            if entities != last_state[universe_id]:
+                create_and_send_dmx_packet(
+                    entities,
+                    universe_table[universe_id],
+                    universe_id,
+                    channel_mapping_table
+                )
+                last_state[universe_id] = entities
+        # 40 fps
+        time.sleep(0.025)
 
 def visualizer(entity_table):
     """Tkinter GUI running on a thread, showing entities in original snake pattern but as pixels."""
