@@ -66,7 +66,7 @@ def visualizer(entity_table):
     root = tk.Tk()
     root.title("Live DMX Visualizer")
 
-    size = 6   # smaller blocks = more fit on screen
+    size = 6 
     padding = 0
     col_width, row_height = size + padding, size + padding
 
@@ -87,7 +87,7 @@ def visualizer(entity_table):
     canvas = tk.Canvas(root, bg="black", width=canvas_width, height=canvas_height)
     canvas.pack()
 
-    # Draw rectangles in your snake pattern
+    # Draw rectangles in snake pattern
     rects = {}
     entity_idx = 0
     x = 0
@@ -115,7 +115,7 @@ def visualizer(entity_table):
             if entity_id in rects:
                 hex_color = f'#{state["r"]:02x}{state["g"]:02x}{state["b"]:02x}'
                 canvas.itemconfig(rects[entity_id], fill=hex_color)
-        root.after(50, update_colors)
+        root.after(25, update_colors)
 
     update_colors()
     root.mainloop()
