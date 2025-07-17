@@ -9,6 +9,9 @@ from models.decoder import EntityState
 from artnet_sender.sender import create_and_send_dmx_packet
 import tkinter as tk
 
+stop_event = threading.Event()
+threads = []
+
 # Shared config tables
 entity_table, universe_table, channel_mapping_table = load_config_tables("config/config.json")
 
@@ -19,7 +22,7 @@ def event_listener(entity_table: Dict[int, Dict[str, Any]]):
     sock.bind(("", 5568))
     print("Listening for eHuB messages…")
 
-    while True:
+    while not stop_event.is_set():
         data, _ = sock.recvfrom(65535)
         try:
             msg = decode_ehub_packet(data)
@@ -42,7 +45,7 @@ def dmx_sender(entity_table: Dict[int, Dict[str, Any]],
                channel_mapping_table: Dict[int, int]):
     last_state: Dict[int, List[EntityState]] = defaultdict(list)
 
-    while True:
+    while not stop_event.is_set():
         current_state: Dict[int, List[EntityState]] = defaultdict(list)
         for entity_id, state in entity_table.items():
             current_state[state["universe"]].append(
@@ -111,6 +114,9 @@ def visualizer(entity_table):
         x += 1
 
     def update_colors():
+        if stop_event.is_set():
+            root.destroy()
+            return
         for entity_id, state in entity_table.items():
             if entity_id in rects:
                 hex_color = f'#{state["r"]:02x}{state["g"]:02x}{state["b"]:02x}'
@@ -120,21 +126,18 @@ def visualizer(entity_table):
     update_colors()
     root.mainloop()
 
+def stop_threads():
+    stop_event.set()
+    for t in threads:
+        t.join()
+
 if __name__ == "__main__":
-    threading.Thread(
-        target=event_listener, args=(entity_table,), daemon=True
-    ).start()
+    threads.append(threading.Thread(target=event_listener, args=(entity_table,)))
+    threads.append(threading.Thread(target=dmx_sender, args=(entity_table, universe_table, channel_mapping_table)))
+    threads.append(threading.Thread(target=visualizer, args=(entity_table,)))
 
-    threading.Thread(
-        target=dmx_sender,
-        args=(entity_table, universe_table, channel_mapping_table),
-        daemon=True
-    ).start()
+    for t in threads:
+        t.start()
 
-    threading.Thread(
-        target=visualizer, args=(entity_table,), daemon=True
-    ).start()
-
-    # Keep main alive
-    while True:
+    while not stop_event.is_set():
         time.sleep(1)
