@@ -3,16 +3,18 @@ import socket
 import time
 from typing import Dict, Any, List
 from collections import defaultdict
+import tkinter as tk
+
 from ehub_receiver.parser import decode_ehub_packet, EHubUpdateMsg, EHubConfigMsg
 from config.config_loader import load_config_tables
 from models.decoder import EntityState
-from artnet_sender.sender import create_and_send_dmx_packet, initialize_dmx_visualizer
-import tkinter as tk
+from artnet_sender.sender import create_and_send_dmx_packet
 
+# Shared state
 stop_event = threading.Event()
-threads = []
+threads: List[threading.Thread] = []
 
-# Shared config tables
+# Load config tables
 entity_table, universe_table, channel_mapping_table = load_config_tables("config/config.json")
 
 
@@ -20,13 +22,16 @@ def event_listener(entity_table: Dict[int, Dict[str, Any]]):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("", 5568))
+    sock.settimeout(0.5)
     print("Listening for eHuB messages…")
 
     while not stop_event.is_set():
-        data, _ = sock.recvfrom(65535)
         try:
+            data, _ = sock.recvfrom(65535)
             msg = decode_ehub_packet(data)
-        except ValueError:
+        except socket.timeout:
+            continue
+        except Exception:
             continue
 
         if isinstance(msg, EHubUpdateMsg):
@@ -37,16 +42,21 @@ def event_listener(entity_table: Dict[int, Dict[str, Any]]):
             for r in msg.ranges:
                 for offset in range(r.length):
                     eid = r.start_id + offset
-                    entity_table[eid] = {"r": r.red, "g": r.green, "b": r.blue, "universe": msg.universe}
-
+                    entity_table[eid] = {
+                        "r": r.red,
+                        "g": r.green,
+                        "b": r.blue,
+                        "universe": msg.universe,
+                    }
 
 def dmx_sender(entity_table: Dict[int, Dict[str, Any]],
                universe_table: Dict[int, str],
-               channel_mapping_table: Dict[int, int]):
+               channel_mapping_table: Dict[int, int]) -> None:
     last_state: Dict[int, List[EntityState]] = defaultdict(list)
-    # initialize_dmx_visualizer(list(entity_table.keys()))
+
     while not stop_event.is_set():
         current_state: Dict[int, List[EntityState]] = defaultdict(list)
+
         for entity_id, state in entity_table.items():
             current_state[state["universe"]].append(
                 EntityState(entity_id, state["r"], state["g"], state["b"])
@@ -61,19 +71,18 @@ def dmx_sender(entity_table: Dict[int, Dict[str, Any]],
                     channel_mapping_table
                 )
                 last_state[universe_id] = entities
-        # 40 fps
-        time.sleep(0.025)
 
-def visualizer(entity_table):
-    """Tkinter GUI running on a thread, showing entities in original snake pattern but as pixels."""
+        time.sleep(0.025)  # 40 FPS
+
+
+def visualizer(entity_table: Dict[int, Dict[str, Any]]) -> None:
     root = tk.Tk()
     root.title("Live DMX Visualizer")
 
-    size = 6 
+    size = 6
     padding = 0
     col_width, row_height = size + padding, size + padding
 
-    # Compute total number of columns needed
     all_entities = sorted(entity_table.keys())
     entity_idx = 0
     x = 0
@@ -82,15 +91,12 @@ def visualizer(entity_table):
         entity_idx += height + 1
         x += 1
     num_columns = x
-
-    # Set canvas size based on calculated columns and max 129 rows
     canvas_width = num_columns * col_width
     canvas_height = 129 * row_height
 
     canvas = tk.Canvas(root, bg="black", width=canvas_width, height=canvas_height)
     canvas.pack()
 
-    # Draw rectangles in snake pattern
     rects = {}
     entity_idx = 0
     x = 0
@@ -113,50 +119,56 @@ def visualizer(entity_table):
         entity_idx += 1
         x += 1
 
+    after_id = None
+
     def update_colors():
+        nonlocal after_id
         if stop_event.is_set():
-            root.destroy()
             return
         for entity_id, state in entity_table.items():
             if entity_id in rects:
                 hex_color = f'#{state["r"]:02x}{state["g"]:02x}{state["b"]:02x}'
                 canvas.itemconfig(rects[entity_id], fill=hex_color)
-        root.after(25, update_colors)
+        after_id = root.after(25, update_colors)
 
+    def on_close():
+        if after_id:
+            root.after_cancel(after_id)
+        stop_event.set()
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
     update_colors()
     root.mainloop()
-    
-def reset_visualizer_state():
-    global threads, stop_event
-    threads.clear()
-    stop_event = threading.Event()
+
 
 def stop_threads():
     print("Stopping threads...")
     stop_event.set()
     for t in threads:
-        t.join()
+        if t.is_alive():
+            t.join()
     threads.clear()
-    stop_event.clear()
+
 
 def main() -> int:
-    global threads
+    if threads:
+        stop_threads()
 
-    # Background threads only
-    threads.append(threading.Thread(target=event_listener, args=(entity_table,)))
-    threads.append(threading.Thread(target=dmx_sender, args=(entity_table, universe_table, channel_mapping_table)))
+    print("Starting visualizer system...")
+
+    threads.append(threading.Thread(target=event_listener, args=(entity_table,), daemon=True))
+    threads.append(threading.Thread(target=dmx_sender, args=(entity_table, universe_table, channel_mapping_table), daemon=True))
 
     for t in threads:
         t.start()
 
     try:
-        # Run visualizer in main thread
         visualizer(entity_table)
     except KeyboardInterrupt:
         print("KeyboardInterrupt received. Shutting down.")
     finally:
         stop_threads()
-        reset_visualizer_state()
         return 1
 
 
