@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox, filedialog
 import json
 import csv
 import subprocess
+from dmx_visualizer import main as run_main_visualizer, stop_threads
 
 CONFIG_PATH = "config/config.json"
 
@@ -151,10 +152,9 @@ class ConfigEditor(tk.Tk):
     def run_visualizer(self):
         self.save_config()
         self.destroy()
-        p = subprocess.Popen(["python3", "dmx_visualizer.py"])
-        print(f"Lancé PID Visualizer : {p.pid}")
-
-
+        while not run_main_visualizer():
+            continue
+        self.__init__()
 
     def run_tester(self):
         self.save_config()

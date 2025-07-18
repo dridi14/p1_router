@@ -125,19 +125,39 @@ def visualizer(entity_table):
 
     update_colors()
     root.mainloop()
+    
+def reset_visualizer_state():
+    global threads, stop_event
+    threads.clear()
+    stop_event = threading.Event()
 
 def stop_threads():
+    print("Stopping threads...")
     stop_event.set()
     for t in threads:
         t.join()
+    threads.clear()
+    stop_event.clear()
 
-if __name__ == "__main__":
+def main() -> int:
+    global threads
+
+    # Background threads only
     threads.append(threading.Thread(target=event_listener, args=(entity_table,)))
     threads.append(threading.Thread(target=dmx_sender, args=(entity_table, universe_table, channel_mapping_table)))
-    threads.append(threading.Thread(target=visualizer, args=(entity_table,)))
 
     for t in threads:
         t.start()
 
-    while not stop_event.is_set():
-        time.sleep(1)
+    try:
+        # Run visualizer in main thread
+        visualizer(entity_table)
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt received. Shutting down.")
+    finally:
+        stop_threads()
+        reset_visualizer_state()
+        return 1
+
+if __name__ == "__main__":
+    exit(main())
