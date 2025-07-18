@@ -1381,6 +1381,13 @@ class ImprovedConfigEditor(tk.Tk):
             command=self.show_network_testing
         ).pack(side=tk.LEFT, padx=5)
         
+        # Add animation tool button
+        ttk.Button(
+            toolbar, 
+            text="Animation Tool", 
+            command=self.show_animation_tool
+        ).pack(side=tk.LEFT, padx=5)
+        
         # 3. Split view container
         content_frame = ttk.Frame(main_container)
         content_frame.pack(fill=tk.BOTH, expand=True)
@@ -2538,16 +2545,45 @@ class ImprovedConfigEditor(tk.Tk):
         self.vis_window.focus_set()
     
     def show_network_testing(self):
-        """Show the network testing tools window"""
-        # Close existing window if open
-        if self.network_testing_window and self.network_testing_window.winfo_exists():
-            self.network_testing_window.destroy()
-        
-        # Create new network testing window
-        self.network_testing_window = NetworkTestingTools(self, self.config_data)
-        
-        # Focus the new window
-        self.network_testing_window.focus_set()
+        """Open the network testing tools window"""
+        try:
+            testing_window = NetworkTestingTools(self, self.config_data)
+            testing_window.transient(self)
+            testing_window.grab_set()
+            self.wait_window(testing_window)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open network testing tools: {e}")
+    
+    def show_animation_tool(self):
+        """Launch the animation tool in a separate window"""
+        try:
+            # Import the animation_tool_launcher module
+            import sys
+            import os
+            import subprocess
+            
+            # Get the path to the animation_tool_launcher.py file
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            launcher_path = os.path.join(script_dir, "animation_tool_launcher.py")
+            
+            # Check if the launcher exists, if not use the one in download-and-launch
+            if not os.path.exists(launcher_path):
+                launcher_path = os.path.join(os.path.dirname(script_dir), "download-and-launch", "animation_tool_launcher.py")
+            
+            if not os.path.exists(launcher_path):
+                messagebox.showerror("Error", "Could not find animation_tool_launcher.py")
+                return
+                
+            # Get the project root directory to set as the working directory
+            project_root = os.path.dirname(script_dir)
+            
+            # Launch the animation tool in a separate process
+            subprocess.Popen([sys.executable, launcher_path], cwd=project_root)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not launch Animation Tool: {e}")
+            import traceback
+            traceback.print_exc()
     
     def highlight_entity(self, entity_id):
         """Highlight an entity in the grid when selected in the visualization"""
