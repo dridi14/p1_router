@@ -110,15 +110,29 @@ class TestUI(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("ArtNet Test UI")
-        self.attributes("-fullscreen", True)
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight() - 100
 
         self.entity_table, self.universe_table, self.channel_mapping_table = load_config_tables("config/config.json")
 
+        # Calculate canvas size based on number of columns in snake pattern
+        all_entity_ids = sorted(self.entity_table.keys())
+        col_count, idx = 0, 0
+        while idx < len(all_entity_ids):
+            height = 129 if col_count % 2 == 0 else 128
+            idx += height + 1
+            col_count += 1
+
+        size = 8
+        padding = 1
+        canvas_width = col_count * (size + padding)
+        canvas_height = 129 * (size + padding)
+
         self._setup_controls()
         self.canvas = EntityCanvas(
-            self, self.entity_table, self._update_entity_color, screen_width, screen_height
+            self,
+            self.entity_table,
+            self._update_entity_color,
+            width=canvas_width,
+            height=canvas_height
         )
         self.canvas.pack()
         self.video_cap: cv2.VideoCapture | None = None
@@ -198,6 +212,11 @@ class TestUI(tk.Tk):
         self._send_messages()
 
 
-if __name__ == "__main__":
+def main() -> int:
     app = TestUI()
     app.mainloop()
+    return 1
+
+
+if __name__ == "__main__":
+    exit(main())
