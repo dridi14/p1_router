@@ -159,5 +159,6 @@ def main() -> int:
         reset_visualizer_state()
         return 1
 
+
 if __name__ == "__main__":
     exit(main())

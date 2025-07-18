@@ -212,6 +212,11 @@ class TestUI(tk.Tk):
         self._send_messages()
 
 
-if __name__ == "__main__":
+def main() -> int:
     app = TestUI()
     app.mainloop()
+    return 1
+
+
+if __name__ == "__main__":
+    exit(main())

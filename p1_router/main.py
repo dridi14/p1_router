@@ -3,7 +3,10 @@ from tkinter import ttk, messagebox, filedialog
 import json
 import csv
 import subprocess
-from dmx_visualizer import main as run_main_visualizer, stop_threads
+from ui.dmx_visualizer import main as run_main_visualizer
+from ui.tester import main as run_tester
+from ui.unity_pong_listener import main as run_pong
+
 
 CONFIG_PATH = "config/config.json"
 
@@ -11,7 +14,7 @@ class ConfigEditor(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Config Editor")
-        self.geometry("800x500")
+        self.geometry("1000x500")
         self.config_data = []
         self.load_config()
 
@@ -34,6 +37,8 @@ class ConfigEditor(tk.Tk):
         tk.Button(self.button_frame, text="Save Config", command=self.save_config).pack(side=tk.LEFT, padx=5)
         tk.Button(self.button_frame, text="Run Visualizer", command=self.run_visualizer).pack(side=tk.LEFT, padx=5)
         tk.Button(self.button_frame, text="Run Tester", command=self.run_tester).pack(side=tk.LEFT, padx=5)
+        tk.Button(self.button_frame, text="Run pong", command=self.run_pong).pack(side=tk.LEFT, padx=5)
+
 
     def load_config(self):
         try:
@@ -158,7 +163,17 @@ class ConfigEditor(tk.Tk):
 
     def run_tester(self):
         self.save_config()
-        subprocess.Popen(["python3", "tester.py"])
+        self.destroy()
+        while not run_tester():
+            continue
+        self.__init__()
+
+    def run_pong(self):
+        self.save_config()
+        self.destroy()
+        while not run_pong():
+            continue
+        self.__init__()
 
 if __name__ == "__main__":
     app = ConfigEditor()

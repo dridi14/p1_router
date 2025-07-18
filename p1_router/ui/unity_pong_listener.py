@@ -103,7 +103,7 @@ def dmx_sender(entity_table: Dict[int, Dict[str, Any]],
 
         time.sleep(0.025)
 
-if __name__ == "__main__":
+def main() -> int:
     threads.append(threading.Thread(target=event_listener, args=(entity_table,), daemon=True))
     threads.append(threading.Thread(target=dmx_sender, args=(entity_table, universe_table, channel_mapping_table), daemon=True))
 
@@ -114,6 +114,19 @@ if __name__ == "__main__":
         while not stop_event.is_set():
             time.sleep(1)
     except KeyboardInterrupt:
-        stop_event.set()
-        for t in threads:
-            t.join()
+        print("Interrupted. Stopping threads...")
+    finally:
+        stop_threads()
+        return 1
+
+def stop_threads():
+    print("Stopping threads...")
+    stop_event.set()
+    for t in threads:
+        t.join()
+    threads.clear()
+    stop_event.clear()
+
+if __name__ == "__main__":
+    exit(main())
+
