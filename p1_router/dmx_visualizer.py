@@ -6,7 +6,7 @@ from collections import defaultdict
 from ehub_receiver.parser import decode_ehub_packet, EHubUpdateMsg, EHubConfigMsg
 from config.config_loader import load_config_tables
 from models.decoder import EntityState
-from artnet_sender.sender import create_and_send_dmx_packet
+from artnet_sender.sender import create_and_send_dmx_packet, initialize_dmx_visualizer
 import tkinter as tk
 
 stop_event = threading.Event()
@@ -44,7 +44,7 @@ def dmx_sender(entity_table: Dict[int, Dict[str, Any]],
                universe_table: Dict[int, str],
                channel_mapping_table: Dict[int, int]):
     last_state: Dict[int, List[EntityState]] = defaultdict(list)
-
+    # initialize_dmx_visualizer(list(entity_table.keys()))
     while not stop_event.is_set():
         current_state: Dict[int, List[EntityState]] = defaultdict(list)
         for entity_id, state in entity_table.items():
